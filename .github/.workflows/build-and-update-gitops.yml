@@ -1,0 +1,61 @@
+name: Build image and update GitOps
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build_push_update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code repo
+        uses: actions/checkout@v4
+
+      - name: Set image tag (short SHA)
+        id: vars
+        run: echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            arv2565/hello-flask:${{ steps.vars.outputs.TAG }}
+
+      # Checkout the GitOps repo using PAT (so we can push changes)
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: arv2565/argocd-app-config
+          token: ${{ secrets.GITOPS_REPO_PAT }}
+          path: gitops
+
+      - name: Update deployment.yaml image tag
+        run: |
+          set -e
+          FILE="gitops/hello-flask/deployment.yaml"
+          NEW_IMAGE="arv2565/hello-flask:${{ steps.vars.outputs.TAG }}"
+
+          # replace the line that starts with "image:"
+          sed -i "s|^\(\s*image:\s*\).*|\1${NEW_IMAGE}|" "$FILE"
+
+          echo "Updated to:"
+          grep -n "image:" "$FILE"
+
+      - name: Commit and push GitOps change
+        run: |
+          cd gitops
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+          git add hello-flask/deployment.yaml
+          git commit -m "Deploy hello-flask ${{ steps.vars.outputs.TAG }}" || echo "No changes to commit"
+          git push
