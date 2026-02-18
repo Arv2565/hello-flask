@@ -10,5 +10,9 @@ def hello():
 def health():
     return "healthz is working", 200
 
+@app.rout("/settings")
+def settings():
+    return "this shows the settings of the application", 200
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)

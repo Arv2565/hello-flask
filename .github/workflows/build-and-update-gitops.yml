@@ -26,6 +26,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          #the "." means build the dockerfile in the repo root, then next step is push
           push: true
           tags: |
             arv2565/hello-flask:${{ steps.vars.outputs.TAG }}
@@ -37,7 +38,8 @@ jobs:
           repository: arv2565/argocd-app-config
           token: ${{ secrets.GITOPS_REPO_PAT }}
           path: gitops
-
+      # this above commands clones the k8s manifest repo into the runner at a newly created /gitops repo at the runner
+      # hence the runner now has root (this repo) and manifest repo inside gitops/
       - name: Update deployment.yaml image tag
         run: |
           set -e
