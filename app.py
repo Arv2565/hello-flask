@@ -10,7 +10,7 @@ def hello():
 def health():
     return "healthz is working", 200
 
-@app.rout("/settings")
+@app.route("/settings")
 def settings():
     return "this shows the settings of the application", 200
 
